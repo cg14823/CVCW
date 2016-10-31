@@ -22,7 +22,7 @@ using namespace cv;
 void detectAndDisplay( Mat frame );
 
 /** Global variables */
-String cascade_name = "frontalface.xml";
+String cascade_name = "dart/dartcascade/cascade.xml";
 CascadeClassifier cascade;
 
 
