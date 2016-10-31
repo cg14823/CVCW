@@ -32,8 +32,8 @@ marks  above  the  first  class  boundary,  we  ask you  to  research,
 understand  and  use  in  OpenCV  one  other  appropriate  vision 
 approach  to  further  improve  the  detection  efficacy  and/or 
 efficiency. 
-The 
-final 20% of the CW mark
+-
+Thefinal 20% of the CW mark
  is reserved for excellence throughout 
 your work, how well you inform your development on evidence and 
 evaluation. Here we look for an outstanding understanding, concise 
