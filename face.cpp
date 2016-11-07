@@ -14,6 +14,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
 #include <stdio.h>
+#include <math.h>
 #define PI 3.14159265
 
 using namespace cv;
@@ -70,7 +71,6 @@ void detectAndDisplay( Mat frame )
        // 3. Print number of Faces found
 	std::cout << faces.size() << std::endl;
 	Sobel_return x = sobel(frame_gray);
-	std::cout<< "!1"<<std::endl;
 	houghCircleCT(x.magnitude,x.directionRads,frame,40);
        // 4. Draw box around faces found
 	for( int i = 0; i < faces.size(); i++ )
@@ -81,11 +81,9 @@ void detectAndDisplay( Mat frame )
 }
 
 void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR){
-	std::cout<< "!2"<<std::endl;
+
 	int rsize = 5;
 	int houghSpace[imageMag.rows][imageMag.cols][rsize];
-	std::cout<< "!3.5"<<std::endl;
-	int i = 0;
   for (int ii = 0; ii < imageMag.rows; ii++){
     for (int jj = 0; jj <imageMag.cols; jj++){
       for(int ri = 0; ri < rsize; ri++){
@@ -93,10 +91,10 @@ void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR){
       }
     }
   }
-	std::cout<< "!3"<<std::endl;
+
 	for (int ii = 0; ii < imageMag.rows; ii++){
     for (int jj = 0; jj < imageMag.cols; jj++){
-      if(imageMag.at<uchar>(ii,jj) > 150){
+      if(imageMag.at<uchar>(ii,jj) > 200){
         for(int ri = minR; ri < minR + 50; ri += 10){
           int x0p = ii + ri * cos(imageDire.at<double>(ii,jj));
           int y0p = jj + ri * sin(imageDire.at<double>(ii,jj));
@@ -112,19 +110,29 @@ void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR){
       }
     }
   }
-	std::cout<< "!4"<<std::endl;
+
 	Mat houghImage = imageMag.clone();
 	int instance [imageMag.rows][imageMag.cols];
 	for (int ii = 0; ii < imageMag.rows; ii++){
 		for (int jj = 0; jj <imageMag.cols; jj++){
-			houghImage.at<uchar>(ii,jj) = (uchar)(houghSpace[ii][jj][1]);
+			houghImage.at<uchar>(ii,jj) = (uchar)(houghSpace[ii][jj][0]);
 		}
 	}
-	std::cout<< "!5"<<std::endl;
-	std::cout<<houghImage<<std::endl;
+
+	threshold(houghImage,houghImage,3,255,THRESH_BINARY);
+	for (int ii = 0; ii < houghImage.rows; ii++){
+		for (int jj = 0; jj <houghImage.cols; jj++){
+			for(int r =0; r< rsize;r++){
+				if(houghSpace[ii][jj][r] > 3){
+					circle(original,Point(jj,ii),(r*10+minR),Scalar( 0, 255, 0 ),2);
+				}
+			}
+		}
+	}
   namedWindow("Hough", CV_WINDOW_AUTOSIZE);
-  imshow("Hough", houghImage);
+  imshow("Hough", original);
   waitKey(0);
+	houghImage.release();
 
 }
 
