@@ -14,12 +14,22 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
 #include <stdio.h>
+#define PI 3.14159265
 
-using namespace std;
 using namespace cv;
+struct Sobel_return{
+  Mat sobelImagex;
+  Mat sobelImagey;
+  Mat magnitude;
+  Mat direction;
+  Mat directionRads;
+};
 
 /** Function Headers */
 void detectAndDisplay( Mat frame );
+void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR);
+Sobel_return sobel(Mat image);
+Mat convolution (Mat input, Mat kernel);
 
 /** Global variables */
 String cascade_name = "dart/dartcascade/cascade.xml";
@@ -59,11 +69,137 @@ void detectAndDisplay( Mat frame )
 
        // 3. Print number of Faces found
 	std::cout << faces.size() << std::endl;
-
+	Sobel_return x = sobel(frame_gray);
+	std::cout<< "!1"<<std::endl;
+	houghCircleCT(x.magnitude,x.directionRads,frame,40);
        // 4. Draw box around faces found
 	for( int i = 0; i < faces.size(); i++ )
 	{
 		rectangle(frame, Point(faces[i].x, faces[i].y), Point(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar( 0, 255, 0 ), 2);
 	}
+
+}
+
+void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR){
+	std::cout<< "!2"<<std::endl;
+	int rsize = 5;
+	int houghSpace[imageMag.rows][imageMag.cols][rsize];
+	std::cout<< "!3.5"<<std::endl;
+	int i = 0;
+  for (int ii = 0; ii < imageMag.rows; ii++){
+    for (int jj = 0; jj <imageMag.cols; jj++){
+      for(int ri = 0; ri < rsize; ri++){
+        houghSpace[ii][jj][ri] = 0;
+      }
+    }
+  }
+	std::cout<< "!3"<<std::endl;
+	for (int ii = 0; ii < imageMag.rows; ii++){
+    for (int jj = 0; jj < imageMag.cols; jj++){
+      if(imageMag.at<uchar>(ii,jj) > 150){
+        for(int ri = minR; ri < minR + 50; ri += 10){
+          int x0p = ii + ri * cos(imageDire.at<double>(ii,jj));
+          int y0p = jj + ri * sin(imageDire.at<double>(ii,jj));
+          int x0m = ii - ri * cos(imageDire.at<double>(ii,jj));
+          int y0m = jj - ri * sin(imageDire.at<double>(ii,jj));
+          if((x0p >= 0 && x0p < imageMag.rows) && (y0p >= 0 && y0p < imageMag.cols)){
+            houghSpace[x0p][y0p][(int)((ri-minR)/10)]++;
+          }
+          if((x0m >= 0 && x0m < imageMag.rows) && (y0m >= 0 && y0m < imageMag.cols)){
+            houghSpace[x0m][y0m][(int)((ri-minR)/10)]++;
+          }
+        }
+      }
+    }
+  }
+	std::cout<< "!4"<<std::endl;
+	Mat houghImage = imageMag.clone();
+	int instance [imageMag.rows][imageMag.cols];
+	for (int ii = 0; ii < imageMag.rows; ii++){
+		for (int jj = 0; jj <imageMag.cols; jj++){
+			houghImage.at<uchar>(ii,jj) = (uchar)(houghSpace[ii][jj][1]);
+		}
+	}
+	std::cout<< "!5"<<std::endl;
+	std::cout<<houghImage<<std::endl;
+  namedWindow("Hough", CV_WINDOW_AUTOSIZE);
+  imshow("Hough", houghImage);
+  waitKey(0);
+
+}
+
+Sobel_return sobel(Mat image){
+  const double normalizemag =  255/sqrt(130050);
+  const double normalizedire = 255/360;
+  int kernelx[3][3] = {{-1,0,1},{-2,0,2},{-1,0,1}};
+  int kernely[3][3] = {{-1,-2,-1},{0,0,0},{1,2,1}};
+  Mat matrixX = Mat(3,3, CV_32S,kernelx);
+  Mat matrixY = Mat(3,3, CV_32S,kernely);
+  Mat directionRads = Mat(image.rows, image.cols,CV_64F);
+  Mat sobelImagex = convolution(image,matrixX);
+  Mat sobelImagey = convolution(image,matrixY);
+  Mat magnitude = image.clone();
+  Mat direction = image.clone();
+
+  for (int i = 0; i < image.rows; i++){
+    for(int j = 0; j <image.cols; j++){
+      double nnormX = (sobelImagex.at<uchar>(i,j) -127.5) *8;
+      double nnormY = (sobelImagey.at<uchar>(i,j) -127.5) *8;
+      magnitude.at<uchar>(i,j) = (uchar)(sqrt(pow(nnormX,2) +pow(nnormY,2)) *normalizemag);
+      direction.at<uchar>(i,j) = (uchar) ((atan2(nnormY,nnormX) * (180/PI)));
+      directionRads.at<double>(i,j) = atan2(nnormY,nnormX);
+    }
+  }
+  Sobel_return val;
+  val.sobelImagex = sobelImagex;
+  val.sobelImagey = sobelImagey;
+  val.direction = direction;
+  val.magnitude = magnitude;
+  val.directionRads = directionRads;
+  return val;
+
+}
+
+Mat convolution (Mat input, Mat kernel){
+
+  Mat output = input.clone();
+
+  int kernelRadiusX = ( kernel.size[0] - 1 ) / 2;
+  int kernelRadiusY = ( kernel.size[1] - 1 ) / 2;
+
+  Mat paddedInput;
+  copyMakeBorder( input, paddedInput,
+    kernelRadiusX, kernelRadiusX, kernelRadiusY, kernelRadiusY,
+    cv::BORDER_REPLICATE );
+
+  for ( int i = 0; i < input.rows; i++ )
+  {
+    for( int j = 0; j < input.cols; j++ )
+    {
+      double sum = 0.0;
+      for( int m = -kernelRadiusX; m <= kernelRadiusX; m++ )
+      {
+        for( int n = -kernelRadiusY; n <= kernelRadiusY; n++ )
+        {
+          // find the correct indices we are using
+          int imagex = i + m + kernelRadiusX;
+          int imagey = j + n + kernelRadiusY;
+          int kernelx = m + kernelRadiusX;
+          int kernely = n + kernelRadiusY;
+
+          // get the values from the padded image and the kernel
+          int imageval = ( int ) paddedInput.at<uchar>( imagex, imagey );
+          int kernalval = kernel.at<int>( kernelx, kernely );
+
+          // do the multiplication
+          sum += imageval * kernalval;
+        }
+      }
+      // set the output value as the sum of the convolution
+      output.at<uchar>(i, j) = (uchar) (sum/8 +255/2);
+    }
+  }
+
+  return output;
 
 }
