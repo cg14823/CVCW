@@ -26,9 +26,15 @@ struct Sobel_return{
   Mat directionRads;
 };
 
+struct Circle{
+  float x;
+  float y;
+  float r;
+};
+
 /** Function Headers */
 void detectAndDisplay( Mat frame );
-void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR);
+void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR, int maxR,std::vector<Circle>* circles);
 Sobel_return sobel(Mat image);
 Mat convolution (Mat input, Mat kernel);
 
@@ -59,6 +65,7 @@ int main( int argc, const char** argv )
 void detectAndDisplay( Mat frame )
 {
 	std::vector<Rect> faces;
+  std::vector<Circle> circles;
 	Mat frame_gray;
 
 	// 1. Prepare Image by turning it into Grayscale and normalising lighting
@@ -71,68 +78,72 @@ void detectAndDisplay( Mat frame )
        // 3. Print number of Faces found
 	std::cout << faces.size() << std::endl;
 	Sobel_return x = sobel(frame_gray);
-	houghCircleCT(x.magnitude,x.directionRads,frame,40);
+  threshold(x.magnitude,x.magnitude,180,255,THRESH_BINARY);
+	houghCircleCT(x.magnitude,x.directionRads,frame,40,95,&circles);
+  imshow("direction",x.direction);
+  namedWindow("direction",CV_WINDOW_AUTOSIZE);
+  waitKey(0);
+
+  std::cout << circles.size() << std::endl;
        // 4. Draw box around faces found
 	for( int i = 0; i < faces.size(); i++ )
 	{
-		rectangle(frame, Point(faces[i].x, faces[i].y), Point(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar( 0, 255, 0 ), 2);
+		rectangle(frame, Point(faces[i].x, faces[i].y), Point(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar( 255, 0, 0 ), 2);
 	}
-
+  for ( int i = 0; i < circles.size();i++){
+    circle(frame,Point(circles[i].x, circles[i].y),circles[i].r,Scalar( 0, 255, 0 ), 2);
+  }
 }
 
-void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR){
+void houghCircleCT (Mat imageMag, Mat imageDire, Mat original, int minR, int maxR, std::vector<Circle>* circles){
 
-	int rsize = 5;
-	int houghSpace[imageMag.rows][imageMag.cols][rsize];
-  for (int ii = 0; ii < imageMag.rows; ii++){
-    for (int jj = 0; jj <imageMag.cols; jj++){
-      for(int ri = 0; ri < rsize; ri++){
-        houghSpace[ii][jj][ri] = 0;
-      }
-    }
-  }
+	int rsize = maxR - minR;
+  int rstep = 1;
+  int hthresh = 4;
+  int sizes[] = {imageMag.cols,imageMag.rows,rsize};
+	Mat houghSpace = Mat(3,sizes,CV_8U,Scalar(0));
+
 
 	for (int ii = 0; ii < imageMag.rows; ii++){
     for (int jj = 0; jj < imageMag.cols; jj++){
-      if(imageMag.at<uchar>(ii,jj) > 200){
-        for(int ri = minR; ri < minR + 50; ri += 10){
+      for(int ri = minR; ri < maxR; ri += rstep){
+        if(imageMag.at<uchar>(ii,jj) == 255){
           int x0p = ii + ri * cos(imageDire.at<double>(ii,jj));
           int y0p = jj + ri * sin(imageDire.at<double>(ii,jj));
           int x0m = ii - ri * cos(imageDire.at<double>(ii,jj));
           int y0m = jj - ri * sin(imageDire.at<double>(ii,jj));
           if((x0p >= 0 && x0p < imageMag.rows) && (y0p >= 0 && y0p < imageMag.cols)){
-            houghSpace[x0p][y0p][(int)((ri-minR)/10)]++;
+            houghSpace.at<uchar>(x0p,y0p,ri -minR) += 1;
           }
           if((x0m >= 0 && x0m < imageMag.rows) && (y0m >= 0 && y0m < imageMag.cols)){
-            houghSpace[x0m][y0m][(int)((ri-minR)/10)]++;
+            houghSpace.at<uchar>(x0m,y0m,ri-minR) += 1;
           }
+      }
+      }
+    }
+  }
+  Mat houghImage = imageMag.clone();
+   for (int ii = 0; ii < imageMag.rows; ii++){
+    for (int jj = 0; jj <imageMag.cols; jj++){
+      for(int ri = 0; ri < rsize; ri++){
+        houghImage.at<uchar>(ii,jj) += houghSpace.at<uchar>(ii,jj,ri);
+        if(houghSpace.at<uchar>(ii,jj,ri) > hthresh){
+          Circle c;
+          c.x = ii;
+          c.y = jj;
+          c.r = ri+minR;
+          circles->push_back(c);
         }
       }
     }
   }
 
-	Mat houghImage = imageMag.clone();
-	int instance [imageMag.rows][imageMag.cols];
-	for (int ii = 0; ii < imageMag.rows; ii++){
-		for (int jj = 0; jj <imageMag.cols; jj++){
-			houghImage.at<uchar>(ii,jj) = (uchar)(houghSpace[ii][jj][0]);
-		}
-	}
+  std::cout<<houghImage<<std::endl;
 
-	threshold(houghImage,houghImage,3,255,THRESH_BINARY);
-	for (int ii = 0; ii < houghImage.rows; ii++){
-		for (int jj = 0; jj <houghImage.cols; jj++){
-			for(int r =0; r< rsize;r++){
-				if(houghSpace[ii][jj][r] > 3){
-					circle(original,Point(jj,ii),(r*10+minR),Scalar( 0, 255, 0 ),2);
-				}
-			}
-		}
-	}
-  namedWindow("Hough", CV_WINDOW_AUTOSIZE);
-  imshow("Hough", original);
-  waitKey(0);
-	houghImage.release();
+  namedWindow("mag",CV_WINDOW_AUTOSIZE);
+  imshow("mag",imageMag);
+  namedWindow("hough",CV_WINDOW_AUTOSIZE);
+  imshow("hough",houghImage);
 
 }
 
@@ -163,6 +174,7 @@ Sobel_return sobel(Mat image){
   val.sobelImagey = sobelImagey;
   val.direction = direction;
   val.magnitude = magnitude;
+
   val.directionRads = directionRads;
   return val;
 
