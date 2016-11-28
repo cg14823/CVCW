@@ -78,10 +78,10 @@ void detectAndDisplay( Mat frame )
        // 3. Print number of Faces found
 	std::cout << faces.size() << std::endl;
   Mat blurred;
-  GaussianBlur(frame_gray,blurred,Size(7,7),0,0);
-	Sobel_return x = sobel(blurred);
-  threshold(x.magnitude,x.magnitude,100,255,THRESH_BINARY);
-	houghCircleCT(x.magnitude,x.directionRads,40,100,5,&circles);
+  //GaussianBlur(frame_gray,blurred,Size(7,7),0,0);
+	Sobel_return x = sobel(frame_gray);
+  threshold(x.magnitude,x.magnitude,80,255,THRESH_BINARY);
+	houghCircleCT(x.magnitude,x.directionRads,40,120,2,&circles);
 
   namedWindow("direction",CV_WINDOW_AUTOSIZE);
   imshow("direction",x.direction);
@@ -89,15 +89,44 @@ void detectAndDisplay( Mat frame )
   imshow("magthres",x.magnitude);
   waitKey(0);
 
-  std::cout << circles.size() << std::endl;
+  std::vector<Circle> finalCircles = circles;
+
+  for( int i =0; i<circles.size();i++){
+    Circle u = circles[i];
+    Circle uf = finalCircles[i];
+    if (uf.r < 0) continue;
+
+    for(int jj =0; jj<circles.size();jj++){
+      if( jj == i) continue;
+      else{
+        Circle q = circles[jj];
+        if((abs(q.x -u.x) < 15) && (abs(q.y -u.y) < 15) && (abs(q.r -u.r) < 30)){
+          if( q.r > u.r){
+            uf.y = -1;
+          }
+          else{
+            finalCircles[jj].r =-1;
+          }
+        }
+      }
+    }
+  }
+
        // 4. Draw box around faces found
 	for( int i = 0; i < faces.size(); i++ )
 	{
 		rectangle(frame, Point(faces[i].x, faces[i].y), Point(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar( 255, 0, 0 ), 2);
 	}
-  for ( int i = 0; i < circles.size();i++){
-    circle(frame,Point(circles[i].x, circles[i].y),circles[i].r,Scalar( 0, 255, 0 ), 2);
+
+  int count =0;
+  for ( int i = 0; i < finalCircles.size();i++){
+    if(finalCircles[i].r > 0){
+      circle(frame,Point(finalCircles[i].x, finalCircles[i].y),finalCircles[i].r,Scalar( 0, 255, 0 ), 2);
+      count++;
+    }
   }
+  std::cout << circles.size() << std::endl;
+  std::cout << count << std::endl;
 
   namedWindow("image",CV_WINDOW_AUTOSIZE);
   imshow("image",frame);
