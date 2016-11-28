@@ -134,7 +134,7 @@ void detectAndDisplay( Mat frame )
 }
 
 void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR, int step, std::vector<Circle>* circles){
-  int hthresh = 10;
+  int hthresh = 12;
   int zsize = (maxR - minR)/step;
   int houghSizes []= {imageMag.rows,imageMag.cols,zsize};
   Mat houghSpace = Mat(3,houghSizes,CV_64F, Scalar(0));
