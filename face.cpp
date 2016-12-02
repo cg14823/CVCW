@@ -41,10 +41,10 @@ struct Bbox{
 /** Function Headers */
 void detectAndDisplay( Mat frame );
 void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR,int step,std::vector<Circle>* circles);
+bool houghLineCT (Mat imageMag,Mat frame);
 Sobel_return sobel(Mat image);
 Mat convolution (Mat input, Mat kernel);
 bool colourdetection(Mat image);
-
 
 /** Global variables */
 String cascade_name = "dart/dartcascade/cascade.xml";
@@ -69,18 +69,19 @@ int main( int argc, const char** argv )
 	return 0;
 }
 bool isGray(Mat img){
+  //Checks if RGB image is grayscale
   Mat dst;
   Mat bgr[3];
   split( img, bgr );
   absdiff( bgr[0], bgr[1], dst );
   double min, max;
   minMaxLoc(dst, &min, &max);
-  //std::cout<<"MAX: "<<max<<std::endl;
   if(max >45.0 ) return false;
   else return true;
 }
 
 bool overlap (Rect u, Rect q){
+  //Checks if given rectangles overlap
   int qx2 = q.x + q.width;
   int qy2 = q.y + q.height;
   int ux2 = u.x + u.width;
@@ -90,6 +91,7 @@ bool overlap (Rect u, Rect q){
 }
 
 int concentric (Rect u, Rect q){
+  //Checks if given rectangle is inside the other given rectangle.
   int qx2 = q.x + q.width;
   int qy2 = q.y + q.height;
   int ux2 = u.x + u.width;
@@ -100,11 +102,13 @@ int concentric (Rect u, Rect q){
 }
 
 bool closeCenter(Rect u, Rect q){
+  //Checks if centres are "close"
   if(abs(u.x +u.width/2 -q.x -q.width/2)>15 && abs(u.y +u.height/2 -q.height -q.height/2)>15) return true;
   else return false;
 }
 
 bool sameRec(Rect u, Rect q){
+  //Checks for duplicate rectangles
   if(abs(u.x - q.x) < 2 && abs(u.y -q.y) < 2 && abs(u.height - q.height) < 2 && abs(u.width- q.width)<2) return true;
   else return false;
 }
@@ -126,17 +130,17 @@ void detectAndDisplay( Mat frame )
 	// 2. Perform Viola-Jones Object Detection
 	cascade.detectMultiScale( frame_gray, faces, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(500,500) );
 
-       // 3. Print number of Faces found
-	//std::cout << faces.size() << std::endl;
-  Mat blurred;
+  // 3. Print number of Faces found
   //GaussianBlur(frame_gray,blurred,Size(7,7),0,0);
 	Sobel_return x = sobel(frame_gray);
+  //Threshold at 80
   threshold(x.magnitude,x.magnitude,80,255,THRESH_BINARY);
+  //Hough Circles
 	houghCircleCT(x.magnitude,x.directionRads,40,120,2,&circles);
 
 
   std::vector<Circle> finalCircles = circles;
-  // remove circles that are clos to each other in a 30x30 box and in a radius of 30
+  // remove circles that are close to each other in a 30x30 box and in a radius of 30
   for( int i =0; i<circles.size();i++){
     Circle u = circles[i];
     Circle uf = finalCircles[i];
@@ -159,7 +163,6 @@ void detectAndDisplay( Mat frame )
   }
 
   if(isGray(frame)){
-    //std::cout << "GRAY" << std::endl;
     finalrects = faces;
   }
   else{
@@ -167,20 +170,17 @@ void detectAndDisplay( Mat frame )
     for(int i =0; i<faces.size();i++){
       Rect dart = faces[i];
       Mat onlyDartboard = frame(dart);
-      bool valid =colourdetection(onlyDartboard);
-      //std::cout << "VALID: "<<valid << std::endl;
+      bool valid = colourdetection(onlyDartboard);
       if (valid){
         finalrects.push_back(dart);
       }
     }
   }
 
-  int count =0;
-  //define final points if square inside circle
+  //define strong circle if rectangle inside circle
   for ( int i = 0; i < finalCircles.size();i++){
     if(finalCircles[i].r > 0){
       Circle u = finalCircles[i];
-      count++;
       //if sqaure inside circle define as final point
       for(int j =0; j< finalrects.size();j++){
         int dx = finalrects[j].x -u.x;
@@ -210,13 +210,13 @@ void detectAndDisplay( Mat frame )
     }
   }
 
-  //if circle inside circle average center and radius and defien as final point
+  //if circle inside circle average center and radius and define as final point
   for(int i =0; i<finalCircles.size();i++){
     if(finalCircles[i].r>0){
         for(int j = 0;j<finalCircles.size();j++){
           if(j != i && finalCircles[j].r >0){
             Circle q = finalCircles[j];
-            // distance between 2 center subtract from alrge r compare to small r
+            // distance between 2 center subtract from large r compare to small r
             int dx = finalCircles[i].x -q.x;
             int dy = finalCircles[i].y -q.y;
             float dcenters = sqrt(pow(dx,2)+pow(dy,2));
@@ -237,19 +237,17 @@ void detectAndDisplay( Mat frame )
       int y = (int)finalCircles[i].y -finalCircles[i].r;
       Rect dart = Rect(x,y, (int) finalCircles[i].r *2, (int) finalCircles[i].r*2);
       darts.push_back(dart);
-      //rectangle(frame, Point(dart.x, dart.y), Point(dart.x + dart.width, dart.y + dart.height), Scalar( 0, 0, 255 ), 2);
     }
   }
   //check if final detections match color pattern
   if(isGray(frame)){
-    //std::cout << "GRAY" << std::endl;
     finaldarts = darts;
   }
   else{
     for(int i =0; i<darts.size();i++){
       Rect dart = darts[i];
       Mat onlyDartboard = frame(dart);
-      bool valid =colourdetection(onlyDartboard);
+      bool valid = colourdetection(onlyDartboard);
       if (valid){
         finaldarts.push_back(dart);
       }
@@ -257,11 +255,7 @@ void detectAndDisplay( Mat frame )
     }
   }
 
-
-
-  //std::cout << finaldarts.size() << std::endl; //bluebox
-  //std::cout << finalrects.size() << std::endl; //redbox
-  /*----------------------------MERGE STUFFFFFF ---------------------------------------*/
+  /*----------------------------MERGE Strong(Blue) and Weak(Red) Classifiers ---------------------------------------*/
   std::vector<Bbox> finalPlot;
   int sized = finaldarts.size();
   for(int i = 0; i<finaldarts.size();i++){
@@ -277,7 +271,7 @@ void detectAndDisplay( Mat frame )
     finalPlot.push_back(b);
   }
 
-  //if there is a red box inside a bluebox do not plot redbox or if blue inside red only plot blue
+  //if there is a red box inside a blue box, do not plot red box or if blue inside red only plot blue
   for(int i = 0; i<finaldarts.size();i++){
     Rect q = finalPlot[i].d;
     for(int j = 0; j<finalrects.size();j++){
@@ -286,14 +280,14 @@ void detectAndDisplay( Mat frame )
     }
   }
 
-  //if various redboxes overlap average to only have on
+  //if various red boxes overlap, average to only have one
   int tot_overlaps;
   do{
     tot_overlaps =0;
     for(int j = 0; j<finalrects.size();j++){
       Rect u = finalrects[j];
       Rect av =u;
-      int overlaps =1; //overlaps with itsselc
+      int overlaps =1; //overlaps with itsself
       for(int i = 0; i<finalrects.size();i++){
         if(i != j){
           Rect q =finalrects[i];
@@ -316,11 +310,11 @@ void detectAndDisplay( Mat frame )
     }
 
     for(int j = 0; j<finalrects.size();j++){
-      finalrects[j] =finalPlot[sized +j].d;
+      finalrects[j] = finalPlot[sized +j].d;
     }
   }while(tot_overlaps > 0);
 
-  // if various blueboxes overlap average them out
+  // if various blue boxes overlap average them out
 
   do{
     tot_overlaps=0;
@@ -354,7 +348,7 @@ void detectAndDisplay( Mat frame )
     }
   }while(tot_overlaps > 0);
 
-  // if a red box overlaps with a blue box ignor it
+  // if a red box overlaps with a blue box ignore it
 
   for(int i= 0; i<finaldarts.size();i++){
     if(finalPlot[i].plot){
@@ -365,46 +359,48 @@ void detectAndDisplay( Mat frame )
       }
     }
   }
-  //std::cout << finalPlot.size() << std::endl;
+
+
 
   //draw final boundries
   int countF =0;
   for(int i =0;i<finalPlot.size();i++){
     if(finalPlot[i].plot){
-      countF++;
       Rect dart = finalPlot[i].d;
-      Scalar c = Scalar(255,0,0);
-      if(i >=sized) c = Scalar(0,0,255);
-      rectangle(frame, Point(dart.x, dart.y), Point(dart.x + dart.width, dart.y + dart.height),c, 2);
+
+      Mat imgMag = x.magnitude(dart);
+      Mat img = frame(dart);
+      bool retVal = houghLineCT(imgMag,img);
+      //std::cout << retVal << std::endl;
+      if (retVal){
+        countF++;
+        Scalar c = Scalar(255,0,0);
+        if(i >=sized) c = Scalar(0,0,255);
+        rectangle(frame, Point(dart.x, dart.y), Point(dart.x + dart.width, dart.y + dart.height),c, 2);
+      }
     }
   }
   std::cout<<"N# Dartoards: "<<countF<<std::endl;
 }
 
 bool colourdetection(Mat image){
-  int black =0;
-  int white =0;
-  int red =0;
-  for(int ii =0; ii< image.rows; ii++){
+  //Detects colours
+  int black = 0;
+  int white = 0;
+  int red = 0;
+  for(int ii=0; ii< image.rows; ii++){
     for(int jj=0; jj< image.cols; jj++){
       int r = (int)image.at<Vec3b>(ii,jj)[2];
-      int g= (int)image.at<Vec3b>(ii,jj)[1];
-      int b= (int)image.at<Vec3b>(ii,jj)[0];
-      if (r < (g +20) && r > (g-20) && b < (g +20) && b > (g-20) && r < 80) black++;
+      int g = (int)image.at<Vec3b>(ii,jj)[1];
+      int b = (int)image.at<Vec3b>(ii,jj)[0];
+      if (r < (g+20) && r > (g-20) && b < (g+20) && b > (g-20) && r < 80) black++;
       if(r > 140 && g < 70 && b < 70) red++;
       if(r > 150 && g> 140 && b > 60) white++;
     }
   }
-  //std::cout << "black :"<<black << std::endl;
-  //std::cout << "red :"<<red << std::endl;
-  //std::cout << "white :"<<white << std::endl;
-
-  /*namedWindow("someimage",CV_WINDOW_AUTOSIZE);
-  imshow("someimage",image);
-  waitKey(0);*/
-  if(red == 0 || white == 0 || black ==0) return false;
-  if( red <20) return false;
-  if (red > black || red >white) return false;
+  if(red == 0 || white == 0 || black == 0) return false;
+  if(red < 20) return false;
+  if(red > black || red > white) return false;
   return true;
 }
 
@@ -459,6 +455,56 @@ void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR, int step, s
        }
      }
    }
+}
+
+bool houghLineCT (Mat imageMag,Mat frame){
+  std::vector<Vec4i> lines;
+  HoughLinesP(imageMag,lines,1,PI/180,50,10,1);
+  std::vector<Vec4f> newLines;
+  Mat newFrame = frame.clone();
+  int range = 4;
+  bool angle1 = false; //40 - 50
+  bool angle2 = false; //130 - 140
+  bool angle3 = false; //220 - 230
+  bool angle4 = false; //310 - 320
+  for( int i = 0; i < lines.size(); i++ )
+  {
+    float x1 = lines[i][0], x2 = lines[i][2], y1 = lines[i][1],y2 = lines[i][3];
+    float difx = abs(x1-x2);
+    float dify = abs(y1-y2);
+    if (dify == 0 || difx == 0) continue;
+    double angle = atan(dify/difx);
+    if (angle > 40 * PI/180 && angle < 50 * PI/180){
+      newLines.push_back(lines[i]);
+      if (x1 < x2){
+        if (y1 < y2) angle2 = true;
+        else angle1 = true;
+      }
+      else{
+        if (y1 < y2) angle3 = true;
+        else angle4 = true;
+      }
+    }
+  }
+
+  for( int i = 0; i < newLines.size(); i++ )
+  {
+      float x1 = newLines[i][0], x2 = newLines[i][2], y1 = newLines[i][1],y2 = newLines[i][3];
+      Point pt1, pt2;
+      pt1.x = (int) x1;
+      pt1.y = (int) y1;
+      pt2.x = (int) x2;
+      pt2.y = (int) y2;
+      line( newFrame, pt1, pt2, Scalar(0,255,0), 2, CV_AA);
+  }
+  //namedWindow("image2",CV_WINDOW_AUTOSIZE);
+  //imshow("image2",newFrame);
+  //waitKey(0);
+  if ((angle1 && (angle2 || angle4)) || (angle2 && (angle1 || angle3))
+      || (angle3 && (angle2 || angle4)) || (angle4 && (angle1 || angle3))){
+    return true;
+  }
+  else return false;
 }
 
 Sobel_return sobel(Mat image){
