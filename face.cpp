@@ -69,18 +69,19 @@ int main( int argc, const char** argv )
 	return 0;
 }
 bool isGray(Mat img){
+  //Checks if RGB image is grayscale
   Mat dst;
   Mat bgr[3];
   split( img, bgr );
   absdiff( bgr[0], bgr[1], dst );
   double min, max;
   minMaxLoc(dst, &min, &max);
-  //std::cout<<"MAX: "<<max<<std::endl;
   if(max >45.0 ) return false;
   else return true;
 }
 
 bool overlap (Rect u, Rect q){
+  //Checks if given rectangles overlap
   int qx2 = q.x + q.width;
   int qy2 = q.y + q.height;
   int ux2 = u.x + u.width;
@@ -90,6 +91,7 @@ bool overlap (Rect u, Rect q){
 }
 
 int concentric (Rect u, Rect q){
+  //Checks if given rectangle is inside the other given rectangle.
   int qx2 = q.x + q.width;
   int qy2 = q.y + q.height;
   int ux2 = u.x + u.width;
@@ -100,6 +102,7 @@ int concentric (Rect u, Rect q){
 }
 
 bool closeCenter(Rect u, Rect q){
+  //Checks if centres are "close"
   if(abs(u.x +u.width/2 -q.x -q.width/2)>15 && abs(u.y +u.height/2 -q.height -q.height/2)>15) return true;
   else return false;
 }
