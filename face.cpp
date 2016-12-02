@@ -37,10 +37,6 @@ struct Bbox{
   Rect d;
   bool plot;
 };
-struct KMeansReturn{
-  Mat labels;
-  Mat centers;
-};
 
 /** Function Headers */
 void detectAndDisplay( Mat frame );
@@ -48,7 +44,7 @@ void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR,int step,std
 Sobel_return sobel(Mat image);
 Mat convolution (Mat input, Mat kernel);
 bool colourdetection(Mat image);
-KnnReturn kmeans(Mat image, int k);
+
 
 /** Global variables */
 String cascade_name = "dart/dartcascade/cascade.xml";
