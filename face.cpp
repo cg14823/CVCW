@@ -380,7 +380,7 @@ void detectAndDisplay( Mat frame )
       }
     }
   }
-  std::cout<<"N# Dartoards: "<<countF<<std::endl;
+  std::cout<<"N# Dartboards: "<<countF<<std::endl;
 }
 
 bool colourdetection(Mat image){
