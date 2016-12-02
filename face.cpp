@@ -37,6 +37,10 @@ struct Bbox{
   Rect d;
   bool plot;
 };
+struct KMeansReturn{
+  Mat labels;
+  Mat centers;
+};
 
 /** Function Headers */
 void detectAndDisplay( Mat frame );
@@ -45,6 +49,7 @@ void houghLineCT (Mat imageMag,Mat frame);
 Sobel_return sobel(Mat image);
 Mat convolution (Mat input, Mat kernel);
 bool colourdetection(Mat image);
+KnnReturn kmeans(Mat image, int k);
 
 /** Global variables */
 String cascade_name = "dart/dartcascade/cascade.xml";
@@ -108,7 +113,7 @@ bool closeCenter(Rect u, Rect q){
 }
 
 bool sameRec(Rect u, Rect q){
-  if(u.x == q.x && u.y ==q.y && u.height == q.height && u.width == q.width) return true;
+  if(abs(u.x - q.x) < 2 && abs(u.y -q.y) < 2 && abs(u.height - q.height) < 2 && abs(u.width- q.width)<2) return true;
   else return false;
 }
 
