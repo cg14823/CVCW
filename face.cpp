@@ -35,6 +35,7 @@ struct Circle{
 /** Function Headers */
 void detectAndDisplay( Mat frame );
 void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR,int step,std::vector<Circle>* circles);
+void houghLineCT (Mat imageMag,Mat frame);
 Sobel_return sobel(Mat image);
 Mat convolution (Mat input, Mat kernel);
 
@@ -76,32 +77,18 @@ void detectAndDisplay( Mat frame )
 	cascade.detectMultiScale( frame_gray, faces, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(500,500) );
 
        // 3. Print number of Faces found
-	std::cout << faces.size() << std::endl;
+	//std::cout << faces.size() << std::endl;
   Mat blurred;
   GaussianBlur(frame_gray,blurred,Size(7,7),0,0);
+
 	Sobel_return x = sobel(blurred);
-  threshold(x.magnitude,x.magnitude,100,255,THRESH_BINARY);
-	houghCircleCT(x.magnitude,x.directionRads,40,100,5,&circles);
+  threshold(x.magnitude,x.magnitude,80,255,THRESH_BINARY);
+	//houghCircleCT(x.magnitude,x.directionRads,40,120,5,&circles);
+  houghLineCT(x.magnitude,frame);
+  //namedWindow("direction",CV_WINDOW_AUTOSIZE);
+  //imshow("direction",x.directionRads);
+  //houghLineCT(x.magnitude,x.directionRads,frame);
 
-  namedWindow("direction",CV_WINDOW_AUTOSIZE);
-  imshow("direction",x.direction);
-  namedWindow("magthres",CV_WINDOW_AUTOSIZE);
-  imshow("magthres",x.magnitude);
-  waitKey(0);
-
-  std::cout << circles.size() << std::endl;
-       // 4. Draw box around faces found
-	for( int i = 0; i < faces.size(); i++ )
-	{
-		rectangle(frame, Point(faces[i].x, faces[i].y), Point(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar( 255, 0, 0 ), 2);
-	}
-  for ( int i = 0; i < circles.size();i++){
-    circle(frame,Point(circles[i].x, circles[i].y),circles[i].r,Scalar( 0, 255, 0 ), 2);
-  }
-
-  namedWindow("image",CV_WINDOW_AUTOSIZE);
-  imshow("image",frame);
-  waitKey(0);
 }
 
 void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR, int step, std::vector<Circle>* circles){
@@ -157,6 +144,44 @@ void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR, int step, s
     //houghImage *= 50;
     namedWindow("hough",CV_WINDOW_AUTOSIZE);
     imshow("hough",houghImage);
+}
+
+void houghLineCT (Mat imageMag,Mat frame){
+  std::vector<Vec4i> lines;
+  HoughLinesP(imageMag,lines,1,PI/180,50,10,1);
+  std::vector<Vec4f> newLines;
+  Mat newFrame = frame.clone();
+  int range = 4;
+  for( int i = 0; i < lines.size(); i++ )
+  {
+    float x1 = lines[i][0], x2 = lines[i][2], y1 = lines[i][1],y2 = lines[i][3];
+    if ((x1 > x2+range || x1 < x2-range) && (y1 > y2+range || y1 < y2-range)){
+      newLines.push_back(lines[i]);
+    }
+  }
+  for( int i = 0; i < lines.size(); i++ )
+  {
+      float x1 = lines[i][0], x2 = lines[i][2], y1 = lines[i][1],y2 = lines[i][3];
+      Point pt1, pt2;
+      pt1.x = (int) x1;
+      pt1.y = (int) y1;
+      pt2.x = (int) x2;
+      pt2.y = (int) y2;
+      line( frame, pt1, pt2, Scalar(0,255,0), 2, CV_AA);
+  }
+  for( int i = 0; i < newLines.size(); i++ )
+  {
+      float x1 = newLines[i][0], x2 = newLines[i][2], y1 = newLines[i][1],y2 = newLines[i][3];
+      Point pt1, pt2;
+      pt1.x = (int) x1;
+      pt1.y = (int) y1;
+      pt2.x = (int) x2;
+      pt2.y = (int) y2;
+      line( newFrame, pt1, pt2, Scalar(0,255,0), 2, CV_AA);
+  }
+  namedWindow("image2",CV_WINDOW_AUTOSIZE);
+  imshow("image2",newFrame);
+  waitKey(0);
 }
 
 Sobel_return sobel(Mat image){
