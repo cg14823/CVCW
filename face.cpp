@@ -64,7 +64,7 @@ int main( int argc, const char** argv )
 	detectAndDisplay( frame );
 
 	// 4. Save Result Image
-	imwrite( "detectedMERGED.jpg", frame );
+	imwrite( "detected.jpg", frame );
 
 	return 0;
 }
@@ -135,7 +135,6 @@ void detectAndDisplay( Mat frame )
 	Sobel_return x = sobel(frame_gray);
   //Threshold at 80
   threshold(x.magnitude,x.magnitude,80,255,THRESH_BINARY);
-  imwrite( "threshold.jpg", x.magnitude );
   //Hough Circles
 	houghCircleCT(x.magnitude,x.directionRads,40,120,2,&circles);
 
@@ -163,7 +162,7 @@ void detectAndDisplay( Mat frame )
     }
   }
 
-  if(true /*isGray(frame)*/){
+  if(isGray(frame)){
     finalrects = faces;
   }
   else{
@@ -241,7 +240,7 @@ void detectAndDisplay( Mat frame )
     }
   }
   //check if final detections match color pattern
-  if(true /*isGray(frame)*/){
+  if(isGray(frame)){
     finaldarts = darts;
   }
   else{
@@ -326,7 +325,7 @@ void detectAndDisplay( Mat frame )
       for(int i = 0; i<finaldarts.size();i++){
         if(i != j){
           Rect q =finaldarts[i];
-          if(sameRec(u,q) && finalPlot[sized +j].plot) finalPlot[i].plot =false;
+          if(sameRec(u,q) && finalPlot[j].plot) finalPlot[i].plot =false;
           else if(overlap(u,q)){
             av.x += q.x;
             av.y += q.y;
@@ -441,7 +440,6 @@ void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR, int step, s
         }
       }
     }
-    imwrite( "houghSpace.jpg", houghImage );
 
     for (int ii = 0; ii < imageMag.rows; ii++){
      for (int jj = 0; jj <imageMag.cols; jj++){
