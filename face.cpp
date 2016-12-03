@@ -135,6 +135,7 @@ void detectAndDisplay( Mat frame )
 	Sobel_return x = sobel(frame_gray);
   //Threshold at 80
   threshold(x.magnitude,x.magnitude,80,255,THRESH_BINARY);
+  imwrite( "threshold.jpg", x.magnitude );
   //Hough Circles
 	houghCircleCT(x.magnitude,x.directionRads,40,120,2,&circles);
 
@@ -162,7 +163,7 @@ void detectAndDisplay( Mat frame )
     }
   }
 
-  if(isGray(frame)){
+  if(true /*isGray(frame)*/){
     finalrects = faces;
   }
   else{
@@ -240,7 +241,7 @@ void detectAndDisplay( Mat frame )
     }
   }
   //check if final detections match color pattern
-  if(isGray(frame)){
+  if(true /*isGray(frame)*/){
     finaldarts = darts;
   }
   else{
@@ -440,6 +441,7 @@ void houghCircleCT (Mat imageMag, Mat imageDire, int minR, int maxR, int step, s
         }
       }
     }
+    imwrite( "houghSpace.jpg", houghImage );
 
     for (int ii = 0; ii < imageMag.rows; ii++){
      for (int jj = 0; jj <imageMag.cols; jj++){
